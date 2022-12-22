@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Http;
 using System.Runtime.Remoting.Messaging;
 using System.Web.Http;
+using System.Web.UI.WebControls;
 
 namespace Somiod.Controllers
 {
@@ -516,6 +517,7 @@ namespace Somiod.Controllers
                     return NotFound();
                 }
                 return Ok(module);
+                
             }
             catch (Exception)
             {
@@ -671,7 +673,7 @@ namespace Somiod.Controllers
         }
         #endregion
 
-        #region Datas and Subscriptions
+        #region Datas and Subscriptions Post
 
         // POST api/<controller>
         [Route("{appName}/{modName}")]
@@ -738,7 +740,9 @@ namespace Somiod.Controllers
             }
         }
 
+        #endregion
 
+        #region Data
         // DELETE api/<controller>/5
         [Route("{appName}/{modName}/datas/{id}")]
         public IHttpActionResult Delete(int id, string appName, string modName)
@@ -770,6 +774,10 @@ namespace Somiod.Controllers
                 return InternalServerError();
             }
         }
+
+        #endregion
+
+        #region Subscription
 
         // DELETE api/<controller>/5
         [Route("{appName}/{modName}/subscriptions/{id}")]
