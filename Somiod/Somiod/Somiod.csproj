@@ -93,7 +93,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Models\Data.cs" />
+    <Compile Include="Models\DataSub.cs" />
     <Compile Include="Models\Module.cs" />
     <Compile Include="Models\Application.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
