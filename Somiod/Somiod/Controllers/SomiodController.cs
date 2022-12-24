@@ -9,12 +9,15 @@ using System.Net.Http;
 using System.Runtime.Remoting.Messaging;
 using System.Web.Http;
 using System.Web.UI.WebControls;
+using uPLibrary.Networking.M2Mqtt;
+using uPLibrary.Networking.M2Mqtt.Messages;
 
 namespace Somiod.Controllers
 {
     [RoutePrefix("api/somiod")]
     public class SomiodController : ApiController
     {
+        MqttClient mClient = null;
         string connectionString = Properties.Settings.Default.connStr;
 
         #region Addicional Methods
@@ -428,7 +431,6 @@ namespace Somiod.Controllers
         #endregion
 
         #region Modules
-
         // GET: api/<controller>
         [Route("{appName}/modules")]
         public IEnumerable<Models.Module> GetAllModules(string appName)
@@ -589,12 +591,12 @@ namespace Somiod.Controllers
             {
                 conn = new SqlConnection(connectionString);
                 conn.Open();
-                string sql = "UPDATE Modules SET Name=@name WHERE Id=@idMod AND parent=@idApp";
+                string sql = "UPDATE Modules SET Name=@name, Parent=@parent WHERE Id=@idMod AND parent=@idApp";
                 SqlCommand cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@name", value.Name);
+                cmd.Parameters.AddWithValue("@parent", value.Parent);
                 cmd.Parameters.AddWithValue("@idMod", id);
                 cmd.Parameters.AddWithValue("@idApp", idApp);
-
 
                 int numRegistos = cmd.ExecuteNonQuery();
                 conn.Close();
@@ -813,6 +815,26 @@ namespace Somiod.Controllers
         }
 
 
+
+        #endregion
+
+        #region Subscription to a channel method
+
+        /*private void subscribeButton_Click(string modName, string endpoint)
+        {
+            string[] topics = { modName };
+            mClient = new MqttClient(IPAddress.Parse(endpoint));
+            mClient.Connect(Guid.NewGuid().ToString());
+            if (!mClient.IsConnected)
+            {
+                Console.WriteLine("Error connecting to message broker...");
+                return;
+            }
+            mClient.MqttMsgPublishReceived += ;
+            byte[] qosLevels = { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE,
+ MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE}; //QoS – depends on the topics number
+            mClient.Subscribe(topics, qosLevels);
+        }*/
 
         #endregion
 
