@@ -7,8 +7,10 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.Remoting.Messaging;
+using System.Text;
 using System.Web.Http;
 using System.Web.UI.WebControls;
+using System.Windows.Forms;
 using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
 
@@ -405,18 +407,18 @@ namespace Somiod.Controllers
                         Delete(listModules.ElementAt(i).Id, nameApp);
                     }
                 }
-                    string sql = "Delete FROM Applications WHERE Id=@idApp";
-                    SqlCommand cmd = new SqlCommand(sql, conn);
-                    cmd.Parameters.AddWithValue("@idApp", id);
+                string sql = "Delete FROM Applications WHERE Id=@idApp";
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@idApp", id);
 
-                    int numRegistos = cmd.ExecuteNonQuery();
-                    conn.Close();
-                    if (numRegistos > 0)
-                    {
-                        return Ok();
-                    }
-                    return NotFound();
-                
+                int numRegistos = cmd.ExecuteNonQuery();
+                conn.Close();
+                if (numRegistos > 0)
+                {
+                    return Ok();
+                }
+                return NotFound();
+
             }
             catch (Exception)
             {
@@ -519,7 +521,7 @@ namespace Somiod.Controllers
                     return NotFound();
                 }
                 return Ok(module);
-                
+
             }
             catch (Exception)
             {
@@ -537,7 +539,7 @@ namespace Somiod.Controllers
         {
             int id = GetUserIDbyApp(appName);
 
-            if(id == -1)
+            if (id == -1)
             {
                 return InternalServerError();
             }
@@ -547,7 +549,7 @@ namespace Somiod.Controllers
             {
                 conn = new SqlConnection(connectionString);
                 conn.Open();
-                
+
                 string sql = "INSERT INTO Modules Values(@res_type, @name, @date, @parent)";
                 SqlCommand cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@res_type", value.Res_type);
@@ -625,7 +627,7 @@ namespace Somiod.Controllers
             List<Models.DataSub> listSubs = (List<Models.DataSub>)getSubsFromModID(id);
             string modName = GetNameModbyIdMod(id);
             int idApp = GetUserIDbyApp(appName);
-            
+
             if (idApp == -1)
             {
                 return null;
@@ -635,14 +637,14 @@ namespace Somiod.Controllers
             {
                 conn = new SqlConnection(connectionString);
                 conn.Open();
-                
-                    if(listSubs.Count() > 0)
+
+                if (listSubs.Count() > 0)
+                {
+                    for (int i = 0; i < listSubs.Count(); i++)
                     {
-                        for (int i = 0; i < listSubs.Count(); i++)
-                        {
-                            DeleteSub(listSubs.ElementAt(i).Id, appName, modName);
-                        }
+                        DeleteSub(listSubs.ElementAt(i).Id, appName, modName);
                     }
+                }
                 if (listDatas.Count() > 0)
                 {
                     for (int i = 0; i < listDatas.Count(); i++)
@@ -682,7 +684,7 @@ namespace Somiod.Controllers
         public IHttpActionResult Post([FromBody] Models.DataSub value, string appName, string modName)
         {
             int id = GetUserIDbyModule(modName);
-
+            var sub = getSubsFromModID(id);
             if (id == -1)
             {
                 return InternalServerError();
@@ -693,8 +695,9 @@ namespace Somiod.Controllers
             {
                 conn = new SqlConnection(connectionString);
                 conn.Open();
-                
-                if (value.Res_type == "data") {
+
+                if (value.Res_type == "data")
+                {
                     string sql = "INSERT INTO Datas Values(@res_type, @content, @date, @parent)";
                     SqlCommand cmd = new SqlCommand(sql, conn);
                     cmd.Parameters.AddWithValue("@res_type", value.Res_type);
@@ -706,11 +709,19 @@ namespace Somiod.Controllers
                     conn.Close();
                     if (numRegistos > 0)
                     {
-                        return Ok();
+                        for (int i = 0; i < sub.Count(); i++)
+                        {
+                            if (sub.ElementAt(i).Event.ToUpper() == "CREATION")
+                            {
+                                Publish(modName, value.Content, sub.ElementAt(i).Endpoint);
+                                return Ok();
+                            }
+                        }
+
                     }
                     return InternalServerError();
                 }
-                else if(value.Res_type == "subscription")
+                else if (value.Res_type == "subscription")
                 {
                     string sql = "INSERT INTO Subscriptions Values(@res_type, @name, @date, @parent, @event, @endpoint)";
                     SqlCommand cmd = new SqlCommand(sql, conn);
@@ -725,6 +736,7 @@ namespace Somiod.Controllers
                     conn.Close();
                     if (numRegistos > 0)
                     {
+                        Subscribe(modName, value.Endpoint, value.Event);
                         return Ok();
                     }
                     return InternalServerError();
@@ -818,9 +830,9 @@ namespace Somiod.Controllers
 
         #endregion
 
-        #region Subscription to a channel method
+        #region Subscribe to a channel method
 
-        /*private void subscribeButton_Click(string modName, string endpoint)
+        public void Subscribe(string modName, string endpoint, string evento)
         {
             string[] topics = { modName };
             mClient = new MqttClient(IPAddress.Parse(endpoint));
@@ -830,13 +842,34 @@ namespace Somiod.Controllers
                 Console.WriteLine("Error connecting to message broker...");
                 return;
             }
-            mClient.MqttMsgPublishReceived += ;
-            byte[] qosLevels = { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE,
- MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE}; //QoS – depends on the topics number
-            mClient.Subscribe(topics, qosLevels);
-        }*/
+            mClient.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
+
+            mClient.Subscribe(topics, new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
+        }
+
+        void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
+        {
+            MessageBox.Show("Publish in endpoint, channel " + e.Topic + "; data = " + Encoding.UTF8.GetString(e.Message) + " related with a creation event");
+        }
+
+        void client_MqttMsgPublishReceivedDeletion(object sender, MqttMsgPublishEventArgs e)
+        {
+            MessageBox.Show("Publish in endpoint, channel " + e.Topic + "; data = " + Encoding.UTF8.GetString(e.Message) + " related with a deletion event");
+        }
 
         #endregion
 
+        #region Publish to a channel method
+
+        private void Publish(string modName, string content, string endpoint)
+        {
+            mClient = new MqttClient(IPAddress.Parse(endpoint));
+            mClient.Connect(Guid.NewGuid().ToString());
+            if (mClient.IsConnected)
+            {
+                mClient.Publish(modName, Encoding.UTF8.GetBytes(content));
+            }
+        }
+        #endregion
     }
 }

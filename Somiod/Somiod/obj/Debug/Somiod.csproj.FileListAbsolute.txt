@@ -132,3 +132,5 @@ C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\obj\D
 C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\obj\Debug\Somiod.csproj.CopyComplete
 C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\obj\Debug\Somiod.dll
 C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\obj\Debug\Somiod.pdb
+C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\bin\M2Mqtt.Net.dll
+C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\bin\M2Mqtt.Net.pdb
