@@ -89,7 +89,7 @@ namespace Somiod.Controllers
                         Id = (int)reader["Id"],
                         Res_type = (string)reader["Res_Type"],
                         Name = (string)reader["Name"],
-                        CreatedDate = (DateTime)reader["Creation_dt"],
+                        CreatedDate = (string)reader["Creation_dt"],
                         Parent = (int)reader["parent"]
                     };
 
@@ -128,7 +128,7 @@ namespace Somiod.Controllers
                         Id = (int)reader["Id"],
                         Res_type = (string)reader["Res_Type"],
                         Content = (string)reader["Content"],
-                        CreatedDate = (DateTime)reader["Creation_dt"],
+                        CreatedDate = (string)reader["Creation_dt"],
                         Parent = (int)reader["parent"]
                     };
 
@@ -167,7 +167,7 @@ namespace Somiod.Controllers
                         Id = (int)reader["Id"],
                         Res_type = (string)reader["Res_Type"],
                         Name = (string)reader["Name"],
-                        CreatedDate = (DateTime)reader["Creation_dt"],
+                        CreatedDate = (string)reader["Creation_dt"],
                         Parent = (int)reader["parent"],
                         Event = (string)reader["Event"],
                         Endpoint = (string)reader["Endpoint"]
@@ -258,7 +258,7 @@ namespace Somiod.Controllers
                         Id = (int)reader["Id"],
                         Res_type = (string)reader["Res_Type"],
                         Name = (string)reader["Name"],
-                        CreatedDate = (DateTime)reader["Creation_dt"]
+                        CreatedDate = (string)reader["Creation_dt"]
                     };
 
                     listApplications.Add(app);
@@ -299,7 +299,7 @@ namespace Somiod.Controllers
                         Id = (int)reader["Id"],
                         Res_type = (string)reader["Res_Type"],
                         Name = (string)reader["Name"],
-                        CreatedDate = (DateTime)reader["Creation_dt"]
+                        CreatedDate = (string)reader["Creation_dt"]
                     };
                 }
                 reader.Close();
@@ -333,7 +333,7 @@ namespace Somiod.Controllers
                 SqlCommand cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@res_type", value.Res_type);
                 cmd.Parameters.AddWithValue("@name", value.Name);
-                cmd.Parameters.AddWithValue("@date", DateTime.UtcNow);
+                cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
                 int numRegistos = cmd.ExecuteNonQuery();
                 conn.Close();
@@ -462,7 +462,7 @@ namespace Somiod.Controllers
                         Id = (int)reader["Id"],
                         Res_type = (string)reader["Res_Type"],
                         Name = (string)reader["Name"],
-                        CreatedDate = (DateTime)reader["Creation_dt"],
+                        CreatedDate = (string)reader["Creation_dt"],
                         Parent = (int)reader["parent"]
                     };
 
@@ -482,7 +482,7 @@ namespace Somiod.Controllers
         }
 
         // GET api/<controller>/5
-        [Route("{appName}/modules/{id}")]
+        [Route("{appName}/{id}")]
         public IHttpActionResult GetModuleById(int id, string appName)
         {
             int idApp = GetUserIDbyApp(appName);
@@ -496,12 +496,34 @@ namespace Somiod.Controllers
             try
             {
                 conn = new SqlConnection(connectionString);
-                conn.Open();
                 string sql = "SELECT * FROM Modules WHERE parent = @idApp AND Id = @idMod";
+                string sqlData = "SELECT * FROM Datas WHERE parent = @idMod";
+                Console.WriteLine(sql);
+                conn.Open();
                 SqlCommand cmd = new SqlCommand(sql, conn);
+                SqlCommand cmd2 = new SqlCommand(sqlData, conn);
                 cmd.Parameters.AddWithValue("@idMod", id);
                 cmd.Parameters.AddWithValue("@idApp", idApp);
+                cmd2.Parameters.AddWithValue("@idMod", id);
 
+                List<Models.Data> listDatas = new List<Models.Data>();
+
+
+                SqlDataReader readerData = cmd2.ExecuteReader();
+                while (readerData.Read())
+                {
+                    listDatas.Add(new Data
+                    {
+                        Id = (int)readerData["Id"],
+                        Res_type = (string)readerData["Res_Type"],
+                        Content = (string)readerData["Content"],
+                        CreatedDate = (string)readerData["Creation_dt"],
+                        Parent = (int)readerData["parent"]
+                    });
+                }
+                readerData.Close();
+                conn.Close();
+                conn.Open();
                 SqlDataReader reader = cmd.ExecuteReader();
                 if (reader.Read())
                 {
@@ -510,8 +532,9 @@ namespace Somiod.Controllers
                         Id = (int)reader["Id"],
                         Res_type = (string)reader["Res_Type"],
                         Name = (string)reader["Name"],
-                        CreatedDate = (DateTime)reader["Creation_dt"],
-                        Parent = (int)reader["parent"]
+                        CreatedDate = (string)reader["Creation_dt"],
+                        Parent = (int)reader["parent"],
+                        datas = listDatas
                     };
                 }
                 reader.Close();
@@ -554,7 +577,7 @@ namespace Somiod.Controllers
                 SqlCommand cmd = new SqlCommand(sql, conn);
                 cmd.Parameters.AddWithValue("@res_type", value.Res_type);
                 cmd.Parameters.AddWithValue("@name", value.Name);
-                cmd.Parameters.AddWithValue("@date", DateTime.UtcNow);
+                cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 cmd.Parameters.AddWithValue("@parent", id);
 
 
@@ -702,7 +725,7 @@ namespace Somiod.Controllers
                     SqlCommand cmd = new SqlCommand(sql, conn);
                     cmd.Parameters.AddWithValue("@res_type", value.Res_type);
                     cmd.Parameters.AddWithValue("@content", value.Content);
-                    cmd.Parameters.AddWithValue("@date", DateTime.UtcNow);
+                    cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                     cmd.Parameters.AddWithValue("@parent", id);
 
                     int numRegistos = cmd.ExecuteNonQuery();
@@ -717,6 +740,7 @@ namespace Somiod.Controllers
                                 return Ok();
                             }
                         }
+                        return Ok();
 
                     }
                     return InternalServerError();
@@ -727,7 +751,7 @@ namespace Somiod.Controllers
                     SqlCommand cmd = new SqlCommand(sql, conn);
                     cmd.Parameters.AddWithValue("@res_type", value.Res_type);
                     cmd.Parameters.AddWithValue("@name", value.Name);
-                    cmd.Parameters.AddWithValue("@date", DateTime.UtcNow);
+                    cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                     cmd.Parameters.AddWithValue("@parent", id);
                     cmd.Parameters.AddWithValue("@event", value.Event);
                     cmd.Parameters.AddWithValue("@endpoint", value.Endpoint);
@@ -787,6 +811,51 @@ namespace Somiod.Controllers
                 }
                 return InternalServerError();
             }
+        }
+
+        // GET: api/<controller>
+        [Route("{appName}/{modName}/latestdata")]
+        public IHttpActionResult getLastData(string modName)
+        {
+            Models.Data data = null;
+            int id = GetUserIDbyModule(modName);
+            SqlConnection conn = null;
+            try
+            {
+                conn = new SqlConnection(connectionString);
+                conn.Open();
+                string sql = "SELECT TOP 1 * FROM Datas where parent=@idMod ORDER BY ID DESC";
+                SqlCommand cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@idMod", id);
+
+                SqlDataReader reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                     data = new Models.Data
+                    {
+                        Id = (int)reader["Id"],
+                        Res_type = (string)reader["Res_Type"],
+                        Content = (string)reader["Content"],
+                        CreatedDate = (string)reader["Creation_dt"],
+                        Parent = (int)reader["parent"]
+                    };
+                }
+                reader.Close();
+                conn.Close();
+                if (data == null)
+                {
+                    return NotFound();
+                }
+                return Ok(data);
+            }
+            catch (Exception)
+            {
+                if (conn.State == System.Data.ConnectionState.Open)
+                {
+                    conn.Close();
+                }
+            }
+            return NotFound();
         }
 
         #endregion

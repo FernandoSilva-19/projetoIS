@@ -10,8 +10,10 @@ namespace Somiod.Models
         public int Id { get; set; }
         public string Res_type { get; set; }
         public string Name { get; set; }
-        public DateTime CreatedDate { get; set; }
+        public string CreatedDate { get; set; }
 
         public int Parent { get; set; }
+
+        public virtual List<Data> datas { get; set; }
     }
 }

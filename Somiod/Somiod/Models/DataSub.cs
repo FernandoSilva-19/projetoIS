@@ -11,7 +11,7 @@ namespace Somiod.Models
         public string Res_type { get; set; }
         public string Content { get; set; }
         public string Name { get; set; }
-        public DateTime CreatedDate { get; set; }
+        public string CreatedDate { get; set; }
 
         public int Parent { get; set; }
 
