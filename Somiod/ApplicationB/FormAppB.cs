@@ -53,11 +53,25 @@ namespace ApplicationB
 
         private void FormAppB_Load(object sender, EventArgs e)
         {
+            bool exists = false;
             Module module = new Module
             {
                 Res_type = "module",
                 Name = "light_command"
             };
+            while (exists == false)
+            {
+            RestRequest requestGetApp = new RestRequest("/api/somiod/", Method.Get);
+            var responseGetApp = client.Execute<List<Somiod.Models.Application>>(requestGetApp).Data;
+
+            for(int i = 0; i < responseGetApp.Count(); i++)
+            {
+                if (responseGetApp.ElementAt(i).Name == "lighting")
+                {
+                    exists = true;
+                }
+            }
+            }
             RestRequest requestMod = new RestRequest("/api/somiod/lighting", Method.Post);
             requestMod.AddBody(module);
 

@@ -19,8 +19,10 @@ namespace Somiod.Controllers
     [RoutePrefix("api/somiod")]
     public class SomiodController : ApiController
     {
-        MqttClient mClient = null;
+        MqttClient subscriber = null;
+        MqttClient publisher = null;
         string connectionString = Properties.Settings.Default.connStr;
+        private static int x = 0;
 
         #region Addicional Methods
         private int GetUserIDbyApp(string appName)
@@ -706,8 +708,20 @@ namespace Somiod.Controllers
         [Route("{appName}/{modName}")]
         public IHttpActionResult Post([FromBody] Models.DataSub value, string appName, string modName)
         {
+
             int id = GetUserIDbyModule(modName);
             var sub = getSubsFromModID(id);
+            if (x == 0)
+            {
+                for (int i = 0; i < sub.Count(); i++)
+                {
+                    if (String.Equals("creation", sub.ElementAt(i).Event, StringComparison.OrdinalIgnoreCase) || String.Equals("both", sub.ElementAt(i).Event, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Subscribe(modName, sub.ElementAt(i).Endpoint);
+                    }
+                }
+                x = 1;
+            }
             if (id == -1)
             {
                 return InternalServerError();
@@ -734,7 +748,8 @@ namespace Somiod.Controllers
                     {
                         for (int i = 0; i < sub.Count(); i++)
                         {
-                            if (sub.ElementAt(i).Event.ToUpper() == "CREATION")
+                            // Se for preciso só contar as subs que são criadas em run time -> & Convert.ToDateTime(sub.ElementAt(i).CreatedDate) > System.Diagnostics.Process.GetCurrentProcess().StartTime
+                            if (String.Equals("creation", sub.ElementAt(i).Event, StringComparison.OrdinalIgnoreCase) || String.Equals("both", sub.ElementAt(i).Event, StringComparison.OrdinalIgnoreCase))
                             {
                                 Publish(modName, value.Content, sub.ElementAt(i).Endpoint);
                                 return Ok();
@@ -760,7 +775,11 @@ namespace Somiod.Controllers
                     conn.Close();
                     if (numRegistos > 0)
                     {
-                        Subscribe(modName, value.Endpoint, value.Event);
+                        if (String.Equals("creation", value.Event, StringComparison.OrdinalIgnoreCase) || String.Equals("both", value.Event, StringComparison.OrdinalIgnoreCase))
+                        {
+                            Subscribe(modName, value.Endpoint);
+                        }
+
                         return Ok();
                     }
                     return InternalServerError();
@@ -831,7 +850,7 @@ namespace Somiod.Controllers
                 SqlDataReader reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
-                     data = new Models.Data
+                    data = new Models.Data
                     {
                         Id = (int)reader["Id"],
                         Res_type = (string)reader["Res_Type"],
@@ -895,26 +914,26 @@ namespace Somiod.Controllers
             }
         }
 
-
-
         #endregion
 
         #region Subscribe to a channel method
 
-        public void Subscribe(string modName, string endpoint, string evento)
+        public void Subscribe(string modName, string endpoint)
         {
             string[] topics = { modName };
-            mClient = new MqttClient(IPAddress.Parse(endpoint));
-            mClient.Connect(Guid.NewGuid().ToString());
-            if (!mClient.IsConnected)
+            subscriber = new MqttClient(IPAddress.Parse(endpoint));
+            subscriber.Connect(Guid.NewGuid().ToString());
+            if (!subscriber.IsConnected)
             {
                 Console.WriteLine("Error connecting to message broker...");
                 return;
             }
-            mClient.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
+                subscriber.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
 
-            mClient.Subscribe(topics, new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
+
+            subscriber.Subscribe(topics, new byte[] { MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE });
         }
+
 
         void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
@@ -932,11 +951,11 @@ namespace Somiod.Controllers
 
         private void Publish(string modName, string content, string endpoint)
         {
-            mClient = new MqttClient(IPAddress.Parse(endpoint));
-            mClient.Connect(Guid.NewGuid().ToString());
-            if (mClient.IsConnected)
+            publisher = new MqttClient(IPAddress.Parse(endpoint));
+            publisher.Connect(Guid.NewGuid().ToString());
+            if (publisher.IsConnected)
             {
-                mClient.Publish(modName, Encoding.UTF8.GetBytes(content));
+                publisher.Publish(modName, Encoding.UTF8.GetBytes(content));
             }
         }
         #endregion
