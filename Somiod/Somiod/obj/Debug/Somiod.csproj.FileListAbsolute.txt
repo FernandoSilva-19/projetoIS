@@ -203,3 +203,6 @@ C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\bin\S
 C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\bin\System.Runtime.CompilerServices.Unsafe.xml
 C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\bin\System.Text.Encodings.Web.xml
 C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\bin\System.Threading.Tasks.Extensions.xml
+C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\bin\Microsoft.Web.Infrastructure.dll
+C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\bin\Swashbuckle.Core.dll
+C:\Users\Fernando Silva\Desktop\Aulas\2022_2023\IS\projetoIS\Somiod\Somiod\bin\WebActivatorEx.dll
