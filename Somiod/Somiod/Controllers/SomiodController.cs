@@ -3,14 +3,18 @@ using Somiod.Models;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.Remoting.Messaging;
 using System.Text;
+using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.UI.WebControls;
 using System.Windows.Forms;
+using System.Xml;
+using System.Xml.Linq;
 using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
 
@@ -241,8 +245,15 @@ namespace Somiod.Controllers
         #region Applications
         // GET: api/<controller>
         [Route("")]
-        public IEnumerable<Models.Application> GetAllApplications()
+        public IHttpActionResult GetAllApplications()
         {
+            XmlDocument doc = new XmlDocument();
+            XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
+            XmlElement root = doc.DocumentElement;
+            doc.InsertBefore(xmlDeclaration, root);
+            XmlElement applicationsElement = doc.CreateElement(string.Empty, "Applications", string.Empty);
+            doc.AppendChild(applicationsElement);
+
             List<Models.Application> listApplications = new List<Models.Application>();
             SqlConnection conn = null;
             try
@@ -275,9 +286,30 @@ namespace Somiod.Controllers
                     conn.Close();
                 }
             }
-            return listApplications;
-        }
+            foreach (Models.Application app in listApplications)
+            {
+                XmlElement applicationElement = doc.CreateElement(string.Empty, "Application", string.Empty);
+                applicationsElement.AppendChild(applicationElement);
 
+                XmlElement idElement = doc.CreateElement(string.Empty, "Id", string.Empty);
+                idElement.AppendChild(doc.CreateTextNode(app.Id.ToString()));
+                applicationElement.AppendChild(idElement);
+
+                XmlElement resTypeElement = doc.CreateElement(string.Empty, "Res_Type", string.Empty);
+                resTypeElement.AppendChild(doc.CreateTextNode(app.Res_type));
+                applicationElement.AppendChild(resTypeElement);
+
+                XmlElement nameElement = doc.CreateElement(string.Empty, "Name", string.Empty);
+                nameElement.AppendChild(doc.CreateTextNode(app.Name));
+                applicationElement.AppendChild(nameElement);
+
+                XmlElement createdDateElement = doc.CreateElement(string.Empty, "Date", string.Empty);
+                createdDateElement.AppendChild(doc.CreateTextNode(app.CreatedDate));
+                applicationElement.AppendChild(createdDateElement);
+            }
+
+            return Ok(doc.OuterXml);
+        }
 
         // GET api/<controller>/5
         [Route("{id}")]
@@ -310,7 +342,32 @@ namespace Somiod.Controllers
                 {
                     return NotFound();
                 }
-                return Ok(app);
+
+                XmlDocument xmlDoc = new XmlDocument();
+                XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", null);
+                XmlElement root = xmlDoc.DocumentElement;
+                xmlDoc.InsertBefore(xmlDeclaration, root);
+
+                XmlElement applicationElement = xmlDoc.CreateElement("Application");
+                xmlDoc.AppendChild(applicationElement);
+
+                XmlElement idElement = xmlDoc.CreateElement("Id");
+                idElement.InnerText = app.Id.ToString();
+                applicationElement.AppendChild(idElement);
+
+                XmlElement resTypeElement = xmlDoc.CreateElement("Res_type");
+                resTypeElement.InnerText = app.Res_type;
+                applicationElement.AppendChild(resTypeElement);
+
+                XmlElement nameElement = xmlDoc.CreateElement("Name");
+                nameElement.InnerText = app.Name;
+                applicationElement.AppendChild(nameElement);
+
+                XmlElement createdDateElement = xmlDoc.CreateElement("Date");
+                createdDateElement.InnerText = app.CreatedDate;
+                applicationElement.AppendChild(createdDateElement);
+
+                return Ok(xmlDoc.OuterXml);
             }
             catch (Exception)
             {
@@ -324,8 +381,24 @@ namespace Somiod.Controllers
 
         // POST api/<controller>
         [Route("")]
-        public IHttpActionResult Post([FromBody] Models.Application value)
+        public async Task<IHttpActionResult> Post()
         {
+            XmlDocument doc = new XmlDocument();
+            using (var content = await Request.Content.ReadAsStreamAsync())
+            {
+                content.Seek(0, SeekOrigin.Begin);
+                using (var sr = new StreamReader(content))
+                {
+                    string raw = sr.ReadToEnd();
+                    doc.LoadXml(raw);
+                }
+            }
+
+            XmlNode nodeName = doc.SelectSingleNode("/root/Name");
+            string name = nodeName.InnerText;
+            XmlNode nodeResType = doc.SelectSingleNode("/root/Res_type");
+            string res_Type = nodeResType.InnerText;
+
             SqlConnection conn = null;
             try
             {
@@ -333,8 +406,8 @@ namespace Somiod.Controllers
                 conn.Open();
                 string sql = "INSERT INTO Applications Values(@res_type, @name, @date)";
                 SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@res_type", value.Res_type);
-                cmd.Parameters.AddWithValue("@name", value.Name);
+                cmd.Parameters.AddWithValue("@res_type", res_Type);
+                cmd.Parameters.AddWithValue("@name", name);
                 cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
                 int numRegistos = cmd.ExecuteNonQuery();
@@ -358,8 +431,23 @@ namespace Somiod.Controllers
 
         // PUT api/<controller>/5
         [Route("{id}")]
-        public IHttpActionResult Put(int id, [FromBody] Models.Application value)
+        public async Task<IHttpActionResult> Put(int id)
         {
+            XmlDocument doc = new XmlDocument();
+            using (var content = await Request.Content.ReadAsStreamAsync())
+            {
+                content.Seek(0, SeekOrigin.Begin);
+                using (var sr = new StreamReader(content))
+                {
+                    string raw = sr.ReadToEnd();
+                    doc.LoadXml(raw);
+                    MessageBox.Show(raw);
+                }
+            }
+
+            XmlNode nodeName = doc.SelectSingleNode("/root/Name");
+            string name = nodeName.InnerText;
+
             SqlConnection conn = null;
             try
             {
@@ -367,7 +455,7 @@ namespace Somiod.Controllers
                 conn.Open();
                 string sql = "UPDATE Applications SET Name=@name WHERE Id=@idApp";
                 SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@name", value.Name);
+                cmd.Parameters.AddWithValue("@name", name);
                 cmd.Parameters.AddWithValue("@idApp", id);
 
 
@@ -436,9 +524,16 @@ namespace Somiod.Controllers
 
         #region Modules
         // GET: api/<controller>
-        [Route("{appName}/modules")]
-        public IEnumerable<Models.Module> GetAllModules(string appName)
+        [Route("{appName:alpha}")]
+        public IHttpActionResult GetAllModules(string appName)
         {
+            XmlDocument doc = new XmlDocument();
+            XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
+            XmlElement root = doc.DocumentElement;
+            doc.InsertBefore(xmlDeclaration, root);
+            XmlElement applicationsElement = doc.CreateElement(string.Empty, "Modules", string.Empty);
+            doc.AppendChild(applicationsElement);
+
             int id = GetUserIDbyApp(appName);
 
             if (id == -1)
@@ -480,7 +575,30 @@ namespace Somiod.Controllers
                     conn.Close();
                 }
             }
-            return listModules;
+
+            foreach (Models.Module module in listModules)
+            {
+                XmlElement applicationElement = doc.CreateElement(string.Empty, "Module", string.Empty);
+                applicationsElement.AppendChild(applicationElement);
+
+                XmlElement idElement = doc.CreateElement(string.Empty, "Id", string.Empty);
+                idElement.AppendChild(doc.CreateTextNode(module.Id.ToString()));
+                applicationElement.AppendChild(idElement);
+
+                XmlElement resTypeElement = doc.CreateElement(string.Empty, "Res_Type", string.Empty);
+                resTypeElement.AppendChild(doc.CreateTextNode(module.Res_type));
+                applicationElement.AppendChild(resTypeElement);
+
+                XmlElement nameElement = doc.CreateElement(string.Empty, "Name", string.Empty);
+                nameElement.AppendChild(doc.CreateTextNode(module.Name));
+                applicationElement.AppendChild(nameElement);
+
+                XmlElement createdDateElement = doc.CreateElement(string.Empty, "Date", string.Empty);
+                createdDateElement.AppendChild(doc.CreateTextNode(module.CreatedDate));
+                applicationElement.AppendChild(createdDateElement);
+            }
+
+            return Ok(doc.OuterXml);
         }
 
         // GET api/<controller>/5
@@ -545,7 +663,60 @@ namespace Somiod.Controllers
                 {
                     return NotFound();
                 }
-                return Ok(module);
+                XmlDocument xmlDoc = new XmlDocument();
+                XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", null);
+                XmlElement root = xmlDoc.DocumentElement;
+                xmlDoc.InsertBefore(xmlDeclaration, root);
+
+                XmlElement moduleElement = xmlDoc.CreateElement("Module");
+                xmlDoc.AppendChild(moduleElement);
+
+                XmlElement idElement = xmlDoc.CreateElement("Id");
+                idElement.InnerText = module.Id.ToString();
+                moduleElement.AppendChild(idElement);
+
+                // Create the "res_type" element
+                XmlElement resTypeElement = xmlDoc.CreateElement("Res_type");
+                resTypeElement.InnerText = module.Res_type;
+                moduleElement.AppendChild(resTypeElement);
+
+                // Create the "name" element
+                XmlElement nameElement = xmlDoc.CreateElement("Name");
+                nameElement.InnerText = module.Name;
+                moduleElement.AppendChild(nameElement);
+
+                // Create the "created_date" element
+                XmlElement createdDateElement = xmlDoc.CreateElement("Date");
+                createdDateElement.InnerText = module.CreatedDate;
+                moduleElement.AppendChild(createdDateElement);
+
+                foreach (Models.Data data in listDatas)
+                {
+                    XmlElement Data = xmlDoc.CreateElement("Data");
+                    moduleElement.AppendChild(Data);
+
+                    XmlElement idData = xmlDoc.CreateElement("Id");
+                    idData.InnerText = data.Id.ToString();
+                    Data.AppendChild(idData);
+
+                    XmlElement resTypeData = xmlDoc.CreateElement("Res_type");
+                    resTypeData.InnerText = data.Res_type.ToString();
+                    Data.AppendChild(resTypeData);
+
+                    XmlElement contentData = xmlDoc.CreateElement("Content");
+                    contentData.InnerText = data.Content.ToString();
+                    Data.AppendChild(contentData);
+
+                    XmlElement creationData = xmlDoc.CreateElement("Creation_Date");
+                    creationData.InnerText = data.CreatedDate.ToString();
+                    Data.AppendChild(creationData);
+
+                    XmlElement parentData = xmlDoc.CreateElement("Parent");
+                    parentData.InnerText = data.Parent.ToString();
+                    Data.AppendChild(parentData);
+                }
+
+                return Ok(xmlDoc.OuterXml);
 
             }
             catch (Exception)
@@ -560,8 +731,24 @@ namespace Somiod.Controllers
 
         // POST api/<controller>
         [Route("{appName}")]
-        public IHttpActionResult Post([FromBody] Models.Module value, string appName)
+        public async Task<IHttpActionResult> Post(string appName)
         {
+            XmlDocument doc = new XmlDocument();
+            using (var content = await Request.Content.ReadAsStreamAsync())
+            {
+                content.Seek(0, SeekOrigin.Begin);
+                using (var sr = new StreamReader(content))
+                {
+                    string raw = sr.ReadToEnd();
+                    doc.LoadXml(raw);
+                }
+            }
+
+            XmlNode nodeName = doc.SelectSingleNode("/root/Name");
+            string name = nodeName.InnerText;
+            XmlNode nodeResType = doc.SelectSingleNode("/root/Res_type");
+            string res_Type = nodeResType.InnerText;
+
             int id = GetUserIDbyApp(appName);
 
             if (id == -1)
@@ -577,8 +764,8 @@ namespace Somiod.Controllers
 
                 string sql = "INSERT INTO Modules Values(@res_type, @name, @date, @parent)";
                 SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@res_type", value.Res_type);
-                cmd.Parameters.AddWithValue("@name", value.Name);
+                cmd.Parameters.AddWithValue("@res_type", res_Type);
+                cmd.Parameters.AddWithValue("@name", name);
                 cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 cmd.Parameters.AddWithValue("@parent", id);
 
@@ -604,8 +791,24 @@ namespace Somiod.Controllers
 
         // PUT api/<controller>/5
         [Route("{appName}/{id}")]
-        public IHttpActionResult Put(int id, [FromBody] Models.Module value, string appName)
+        public async Task<IHttpActionResult> Put(int id, string appName)
         {
+            XmlDocument doc = new XmlDocument();
+            using (var content = await Request.Content.ReadAsStreamAsync())
+            {
+                content.Seek(0, SeekOrigin.Begin);
+                using (var sr = new StreamReader(content))
+                {
+                    string raw = sr.ReadToEnd();
+                    doc.LoadXml(raw);
+                }
+            }
+
+            XmlNode nodeName = doc.SelectSingleNode("/root/Name");
+            string name = nodeName.InnerText;
+            XmlNode nodeParent = doc.SelectSingleNode("/root/Parent");
+            string Parent = nodeParent.InnerText;
+
             int idApp = GetUserIDbyApp(appName);
 
             if (idApp == -1)
@@ -620,8 +823,8 @@ namespace Somiod.Controllers
                 conn.Open();
                 string sql = "UPDATE Modules SET Name=@name, Parent=@parent WHERE Id=@idMod AND parent=@idApp";
                 SqlCommand cmd = new SqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@name", value.Name);
-                cmd.Parameters.AddWithValue("@parent", value.Parent);
+                cmd.Parameters.AddWithValue("@name", name);
+                cmd.Parameters.AddWithValue("@parent", Parent);
                 cmd.Parameters.AddWithValue("@idMod", id);
                 cmd.Parameters.AddWithValue("@idApp", idApp);
 
@@ -706,8 +909,21 @@ namespace Somiod.Controllers
 
         // POST api/<controller>
         [Route("{appName}/{modName}")]
-        public IHttpActionResult Post([FromBody] Models.DataSub value, string appName, string modName)
+        public async Task<IHttpActionResult> Post(string appName, string modName)
         {
+            XmlDocument doc = new XmlDocument();
+            using (var content = await Request.Content.ReadAsStreamAsync())
+            {
+                content.Seek(0, SeekOrigin.Begin);
+                using (var sr = new StreamReader(content))
+                {
+                    string raw = sr.ReadToEnd();
+                    doc.LoadXml(raw);
+                }
+            }
+
+            XmlNode nodeResType = doc.SelectSingleNode("/root/Res_type");
+            string res_Type = nodeResType.InnerText;
 
             int id = GetUserIDbyModule(modName);
             var sub = getSubsFromModID(id);
@@ -733,12 +949,15 @@ namespace Somiod.Controllers
                 conn = new SqlConnection(connectionString);
                 conn.Open();
 
-                if (value.Res_type == "data")
+                if (String.Equals("data", res_Type, StringComparison.OrdinalIgnoreCase))
                 {
+                    XmlNode nodeContent = doc.SelectSingleNode("/root/Content");
+                    string contentData = nodeContent.InnerText;
+
                     string sql = "INSERT INTO Datas Values(@res_type, @content, @date, @parent)";
                     SqlCommand cmd = new SqlCommand(sql, conn);
-                    cmd.Parameters.AddWithValue("@res_type", value.Res_type);
-                    cmd.Parameters.AddWithValue("@content", value.Content);
+                    cmd.Parameters.AddWithValue("@res_type", res_Type);
+                    cmd.Parameters.AddWithValue("@content", contentData);
                     cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                     cmd.Parameters.AddWithValue("@parent", id);
 
@@ -751,7 +970,7 @@ namespace Somiod.Controllers
                             // Se for preciso só contar as subs que são criadas em run time -> & Convert.ToDateTime(sub.ElementAt(i).CreatedDate) > System.Diagnostics.Process.GetCurrentProcess().StartTime
                             if (String.Equals("creation", sub.ElementAt(i).Event, StringComparison.OrdinalIgnoreCase) || String.Equals("both", sub.ElementAt(i).Event, StringComparison.OrdinalIgnoreCase))
                             {
-                                Publish(modName, value.Content, sub.ElementAt(i).Endpoint);
+                                Publish(modName, contentData, sub.ElementAt(i).Endpoint);
                                 return Ok();
                             }
                         }
@@ -760,24 +979,31 @@ namespace Somiod.Controllers
                     }
                     return InternalServerError();
                 }
-                else if (value.Res_type == "subscription")
+                else if (String.Equals("subscription", res_Type, StringComparison.OrdinalIgnoreCase))
                 {
+                    XmlNode nodeName = doc.SelectSingleNode("/root/Name");
+                    string name = nodeName.InnerText;
+                    XmlNode nodeEvento = doc.SelectSingleNode("/root/Event");
+                    string evento = nodeEvento.InnerText;
+                    XmlNode nodeEndpoint = doc.SelectSingleNode("/root/Endpoint");
+                    string endpoint = nodeEndpoint.InnerText;
+
                     string sql = "INSERT INTO Subscriptions Values(@res_type, @name, @date, @parent, @event, @endpoint)";
                     SqlCommand cmd = new SqlCommand(sql, conn);
-                    cmd.Parameters.AddWithValue("@res_type", value.Res_type);
-                    cmd.Parameters.AddWithValue("@name", value.Name);
+                    cmd.Parameters.AddWithValue("@res_type", res_Type);
+                    cmd.Parameters.AddWithValue("@name", name);
                     cmd.Parameters.AddWithValue("@date", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                     cmd.Parameters.AddWithValue("@parent", id);
-                    cmd.Parameters.AddWithValue("@event", value.Event);
-                    cmd.Parameters.AddWithValue("@endpoint", value.Endpoint);
+                    cmd.Parameters.AddWithValue("@event", evento);
+                    cmd.Parameters.AddWithValue("@endpoint", endpoint);
 
                     int numRegistos = cmd.ExecuteNonQuery();
                     conn.Close();
                     if (numRegistos > 0)
                     {
-                        if (String.Equals("creation", value.Event, StringComparison.OrdinalIgnoreCase) || String.Equals("both", value.Event, StringComparison.OrdinalIgnoreCase))
+                        if (String.Equals("creation", evento, StringComparison.OrdinalIgnoreCase) || String.Equals("both", evento, StringComparison.OrdinalIgnoreCase))
                         {
-                            Subscribe(modName, value.Endpoint);
+                            Subscribe(modName, endpoint);
                         }
 
                         return Ok();
@@ -865,7 +1091,35 @@ namespace Somiod.Controllers
                 {
                     return NotFound();
                 }
-                return Ok(data);
+                XmlDocument xmlDoc = new XmlDocument();
+                XmlDeclaration xmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", null);
+                XmlElement root = xmlDoc.DocumentElement;
+                xmlDoc.InsertBefore(xmlDeclaration, root);
+
+                XmlElement dataElement = xmlDoc.CreateElement("Data");
+                xmlDoc.AppendChild(dataElement);
+
+                XmlElement idElement = xmlDoc.CreateElement("Id");
+                idElement.InnerText = data.Id.ToString();
+                dataElement.AppendChild(idElement);
+
+                XmlElement resTypeElement = xmlDoc.CreateElement("Res_type");
+                resTypeElement.InnerText = data.Res_type;
+                dataElement.AppendChild(resTypeElement);
+
+                XmlElement contentElement = xmlDoc.CreateElement("Content");
+                contentElement.InnerText = data.Content;
+                dataElement.AppendChild(contentElement);
+
+                XmlElement createdDateElement = xmlDoc.CreateElement("CreationDate");
+                createdDateElement.InnerText = data.CreatedDate;
+                dataElement.AppendChild(createdDateElement);
+
+                XmlElement parentElement = xmlDoc.CreateElement("Parent");
+                parentElement.InnerText = data.Parent.ToString();
+                dataElement.AppendChild(parentElement);
+
+                return Ok(xmlDoc.OuterXml);
             }
             catch (Exception)
             {

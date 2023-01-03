@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -24,40 +25,24 @@ namespace ApplicationA
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            Application2 app = new Application2
-            {
-                Res_type = "application",
-                Name = "lighting"
-            };
-            RestRequest request = new RestRequest("/api/somiod", Method.Post);
-            request.AddBody(app);
-
+            var request = new RestRequest("/api/somiod", Method.Post);
+            string rawXml = "<root><Name>lighting</Name><Res_type>application</Res_type></root>";
+            request.AddParameter("application/xml", rawXml, ParameterType.RequestBody);
             var response = client.Execute(request);
             MessageBox.Show(response.StatusCode + ", lighting application created! ");
 
-            Module module = new Module
-            {
-                Res_type = "module",
-                Name = "light_bulb"
-            };
-            RestRequest requestMod = new RestRequest("/api/somiod/lighting", Method.Post);
-            requestMod.AddBody(module);
-
+            var requestMod = new RestRequest("/api/somiod/lighting", Method.Post);
+            string rawXmlMod = "<root><Name>light_bulb</Name><Res_type>Module</Res_type></root>";
+            requestMod.AddParameter("application/xml", rawXmlMod, ParameterType.RequestBody);
             var responseMod = client.Execute(requestMod);
             MessageBox.Show(responseMod.StatusCode + ", light_bulb module created! ");
 
-            DataSub subscription = new DataSub
-            {
-                Res_type = "subscription",
-                Name = "sub1",
-                Event = "creation",
-                Endpoint = "127.0.0.1"
-            };
-            RestRequest requestSub = new RestRequest("/api/somiod/lighting/light_bulb", Method.Post);
-            requestSub.AddBody(subscription);
-
+            var requestSub = new RestRequest("/api/somiod/lighting/light_bulb", Method.Post);
+            string rawXmlSub = "<root><Name>sub1</Name><Res_type>subscription</Res_type><Event>creation</Event><Endpoint>127.0.0.1</Endpoint></root>";
+            requestSub.AddParameter("application/xml", rawXmlSub, ParameterType.RequestBody);
             var responseSub = client.Execute(requestSub);
-            MessageBox.Show(responseSub.StatusCode + ", sub1 subscription created! ");
+            MessageBox.Show(responseSub.StatusCode + ", sub1 module created! ");
+
             timer1.Start();
 
         }
@@ -66,13 +51,13 @@ namespace ApplicationA
         {
             RestRequest requestLastData = new RestRequest("/api/somiod/lighting/light_bulb/latestdata", Method.Get);
 
-            var responseData = client.Execute<Data>(requestLastData).Data;
+            var responseData = client.Execute(requestLastData);
             if(responseData != null) {
-            if (responseData.Content == "xml(on)")
+            if (responseData.Content.Contains("xml(on)"))
             {
                 pictureBox1.Image = Properties.Resources.light_on;
             }
-            else if (responseData.Content == "xml(off)")
+            else if (responseData.Content.Contains("xml(off)"))
             {
                 pictureBox1.Image = Properties.Resources.light_off;
             }
